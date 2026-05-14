@@ -135,6 +135,8 @@ SplittingCode/03_Supervision900_CoderA:B:C_by_blocks.py
 
 `Coder_A`、`Coder_B`、`Coder_C` 三个 sheet 是单人标注部分。每名标注员只标自己的 sheet。单人标注部分用于扩大训练数据；其中 `needs_review`、低置信度和明显有争议的样本后续进入人工裁决。
 
+对这部分单人标注样本，我还做一层质量控制：每个人负责的约 `200` 条里，随机抽 `10%-20%` 交给另一名标注员复查。这样可以检查 single-coded 样本有没有系统性偏差，也能及时发现 codebook 里还不够清楚的地方。
+
 ## 7. 我记录的标注字段
 
 在样本表里，我保留了空白标注列：
@@ -157,6 +159,8 @@ SplittingCode/03_Supervision900_CoderA:B:C_by_blocks.py
 
 计算一致性以后，再讨论分歧样本。共同标注样本通过多数票或老师裁决形成最终标签。单人标注样本中被标为 `needs_review` 的部分也进入裁决。
 
+单人标注样本的随机复查结果也会进入裁决流程。如果原标注员和复查标注员意见不同，我会保留分歧记录，再由老师或小组讨论形成最终标签。
+
 ## 9. 训练集、验证集和测试集
 
 后续做机器学习时，我不按单行随机切分 train/dev/test，而是按 `sample_block_id` 切分。同一个连续区块只能进入同一个集合，不能一半在训练集、一半在测试集。
@@ -178,4 +182,3 @@ SplittingCode/03_Supervision900_CoderA:B:C_by_blocks.py
 这套人工标注数据后续用于 proposal discovery。我把 Qwen3-32B 作为优先尝试的开源大模型。
 
 我这样选，是因为这个任务需要稳定的结构化输出、较好的长上下文处理能力、明确的微调路径和宽松许可。Qwen3-32B 是 Apache 2.0 许可，支持 LoRA、QLoRA 和 full fine-tuning；推理时可以关闭 thinking mode，让输出更接近一个稳定的标注器。Llama 系列仍然可以作为对照模型，但我把 Qwen3-32B 放在主模型位置。
-
