@@ -4,33 +4,17 @@
 
 ## 1. 分析单位
 
-我把 `42-48` 届 UNCITRAL Working Group III 逐字稿切成 speaker turn。一个样本就是一个 speaker 的一次连续发言；如果同一次发言里有好几段，也仍然算同一个样本。
+我把 `42-48` 届 UNCITRAL Working Group III 逐字稿切成 speaker turn。一个样本就是一个 speaker 的一次连续发言；如果同一次发言里有好几段，也仍然算同一个样本。最终一共有 `8270` 条 speaker-turn 样本。
 
-最终用于抽样的基础表是：
+## 2. 没有按单行随机抽样
 
-```text
-ACIIL_42_48_all_speaker_turns.xlsx
-```
-
-这个表共有 `8270` 条 speaker-turn 样本。每条样本保留了 `record_id`、`source_doc`、`source_markdown`、`session_id`、`date`、`speaker`、`speaker_type`、`turn_index`、`word_count`、`char_count` 和 `text`。
-
-## 2. 我没有按单行随机抽样
-
-proposal 往往不是孤立出现的。一个代表提出文本修改，后面几个代表可能马上支持、反对、补充或要求澄清。如果随机抽单行，标注员很容易看不到上下文。
-
-所以我按连续区块抽样。区块内部的 speaker turn 保持原始顺序，不跨原始文档。这样标注员看到的是一小段完整讨论，而不是散落的句子。
+proposal 往往不是孤立出现的。一个代表提出文本修改，后面几个代表可能马上支持、反对、补充或要求澄清。如果随机抽单行，标注员很容易看不到上下文。所以我按连续区块抽样。区块内部的 speaker turn 保持原始顺序，不跨原始文档。这样标注员看到的是一小段完整讨论，而不是散落的句子。
 
 ## 3. 200 条校准样本
 
 我先抽了一个 `200` 条的校准集，用来训练标注员、讨论边界案例、形成 codebook。
 
-这批样本不是随机抽的。我参考了已有的 proposal repository：
-
-```text
-proposal_repository_opus47.csv
-```
-
-然后给全部 `8270` 条 speaker turn 打了一个 proposal probability score。分数主要来自几类信号：
+这批样本不是随机抽的。我参考了已有的 proposal repository。然后给全部 `8270` 条 speaker turn 打了一个 proposal probability score。分数主要来自几类信号：
 
 - 是否出现 `we propose`、`we suggest`、`should be`、`we support`、`we oppose` 这类 proposal 或 stance 表达；
 - 是否出现 `add`、`delete`、`replace`、`retain`、`revise`、`clarify` 这类文本动作；
@@ -115,9 +99,9 @@ SplittingCode/02_Supervision900_stratified_continuous_blocks.py
 
 我们组有三名标注员。我把 `900` 条正式监督样本按区块分成两部分。
 
-第一部分是三人共同标注的 reliability sample。这里我优先放入 proposal probability 更高的区块，因为这些区块更容易出现真正的 proposal，也更容易暴露 codebook 的边界问题。
+第一部分是三人共同标注的 reliability sample。这里优先放入 proposal probability 更高的区块，因为这些区块更容易出现真正的 proposal，也更容易暴露 codebook 的边界问题。
 
-第二部分是单人标注样本。我把剩下的区块完整分给三名标注员，尽量让每个人的工作量接近。
+第二部分是单人标注样本，把剩下的区块完整分给三名标注员，尽量让每个人的工作量接近。
 
 最后分配结果是：
 
@@ -145,9 +129,9 @@ SplittingCode/03_Supervision900_CoderA:B:C_by_blocks.py
 
 ## 6. 标注流程
 
-我把 `200` 条校准样本作为 training/calibration set。老师带三名标注员一起看这批样本，用它来统一什么算 proposal、什么不算 proposal，以及如何处理模糊情况。
+我把 `200` 条校准样本作为 training/calibration set。老师带标注员一起看这批样本，用它来统一什么算 proposal、什么不算 proposal，以及如何处理模糊情况。
 
-校准之后，三名标注员独立标注 `shared_3coders` 里的 `313` 条样本。这个部分用来计算 intercoder reliability。计算一致性之前，三个人不讨论具体答案。
+校准之后，标注员独立标注 `shared_3coders` 里的 `313` 条样本。这个部分用来计算 intercoder reliability。计算一致性之前，三个人不讨论具体答案。
 
 `Coder_A`、`Coder_B`、`Coder_C` 三个 sheet 是单人标注部分。每名标注员只标自己的 sheet。单人标注部分用于扩大训练数据；其中 `needs_review`、低置信度和明显有争议的样本后续进入人工裁决。
 
@@ -193,7 +177,5 @@ SplittingCode/03_Supervision900_CoderA:B:C_by_blocks.py
 
 这套人工标注数据后续用于 proposal discovery。我把 Qwen3-32B 作为优先尝试的开源大模型。
 
-我这样选，是因为这个任务需要稳定的结构化输出、较好的长上下文处理能力、明确的微调路径和宽松许可。Qwen3-32B 是 Apache 2.0 许可，支持 LoRA、QLoRA 和 full fine-tuning；推理时可以关闭 thinking mode，让输出更接近一个稳定的标注器。
-
-Llama 系列仍然可以作为对照模型，但我把 Qwen3-32B 放在主模型位置。
+我这样选，是因为这个任务需要稳定的结构化输出、较好的长上下文处理能力、明确的微调路径和宽松许可。Qwen3-32B 是 Apache 2.0 许可，支持 LoRA、QLoRA 和 full fine-tuning；推理时可以关闭 thinking mode，让输出更接近一个稳定的标注器。Llama 系列仍然可以作为对照模型，但我把 Qwen3-32B 放在主模型位置。
 
