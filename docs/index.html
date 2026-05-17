@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>组会与科研进度 Journal</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #27313a;
+      --muted: #6c7885;
+      --line: #d8e0e8;
+      --blue: #3ab7ee;
+      --blue-dark: #108bc4;
+      --blue-soft: #dff5ff;
+      --green: #23a978;
+      --green-soft: #dcf7ec;
+      --amber: #d88a17;
+      --shadow: 0 18px 45px rgba(35, 49, 66, 0.10);
+      --radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(315px, 360px) minmax(420px, 1fr);
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .calendar-panel,
+    .journal-panel {
+      background: var(--panel);
+      border: 1px solid rgba(216, 224, 232, 0.75);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .calendar-panel {
+      height: calc(100vh - 32px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      padding: 12px 12px 10px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+    }
+
+    .title-row,
+    .tool-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .current-date {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 8px 9px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      line-height: 1;
+      min-height: 34px;
+    }
+
+    .btn:hover {
+      border-color: var(--blue);
+      transform: translateY(-1px);
+    }
+
+    .btn.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .btn.ghost {
+      color: var(--muted);
+    }
+
+    .month-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+      width: 100%;
+    }
+
+    .month-controls input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 8px;
+      min-height: 34px;
+      flex: 1 1 auto;
+      min-width: 0;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      padding: 9px 8px 7px;
+      color: #4c5964;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .months {
+      overflow: auto;
+      padding: 4px 8px 18px;
+      scroll-behavior: smooth;
+    }
+
+    .month {
+      padding: 10px 0 8px;
+      scroll-margin-top: 8px;
+    }
+
+    .month h2 {
+      font-size: 18px;
+      line-height: 1.1;
+      margin: 0 0 8px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .day-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 2px;
+    }
+
+    .day {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #2c2f33;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      min-width: 0;
+      transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+
+    .day:hover {
+      transform: translateY(-1px);
+      background: #eef8fd;
+    }
+
+    .day.has-entry {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .day.meeting {
+      box-shadow: inset 0 0 0 2px var(--green);
+    }
+
+    .day.meeting::after {
+      content: "";
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      right: 4px;
+      top: 4px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 2px #fff;
+    }
+
+    .day.selected {
+      outline: 2px solid var(--amber);
+      outline-offset: 1px;
+    }
+
+    .empty {
+      min-height: 1px;
+    }
+
+    .journal-panel {
+      height: calc(100vh - 32px);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .journal-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+
+    .journal-date {
+      margin: 0 0 3px;
+      font-size: 28px;
+      line-height: 1.08;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .saved-state {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meeting-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+      color: var(--ink);
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      padding-top: 2px;
+    }
+
+    .meeting-switch input {
+      width: 42px;
+      height: 24px;
+      appearance: none;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #cbd6e1;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .meeting-switch input::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      top: 2px;
+      left: 3px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+      transition: transform 0.15s ease;
+    }
+
+    .meeting-switch input:checked {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .meeting-switch input:checked::after {
+      transform: translateX(17px);
+    }
+
+    .record-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      flex: 1 1 auto;
+      display: flex;
+      min-height: 0;
+    }
+
+    table.record-table {
+      width: 100%;
+      height: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      min-width: 620px;
+      border: 2px solid #1f2c36;
+      background: #fff;
+    }
+
+    .record-table col:first-child {
+      width: 78px;
+    }
+
+    .record-table th,
+    .record-table td {
+      border: 2px solid #1f2c36;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .record-table th {
+      height: 54px;
+      font-size: 20px;
+      font-weight: 850;
+      background: #f9fbfc;
+    }
+
+    .diagonal {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(to top right, transparent calc(50% - 1px), #1f2c36 50%, transparent calc(50% + 1px)),
+        #f9fbfc;
+    }
+
+    .row-label {
+      font-size: 21px;
+      font-weight: 850;
+      background: #f9fbfc;
+      writing-mode: vertical-rl;
+      letter-spacing: 2px;
+    }
+
+    .record-cell {
+      height: auto;
+      padding: 0;
+      background: #fff;
+    }
+
+    .editor {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      overflow: auto;
+      border: 0;
+      padding: 18px;
+      outline: none;
+      line-height: 1.65;
+      font-size: 17px;
+      color: var(--ink);
+      background:
+        linear-gradient(#fff, #fff 31px, #eef2f6 32px);
+      background-size: 100% 32px;
+      text-align: left;
+    }
+
+    .editor:focus {
+      box-shadow: inset 0 0 0 3px var(--blue-soft);
+    }
+
+    .editor:empty::before {
+      content: attr(data-placeholder);
+      color: #93a0ad;
+    }
+
+    .editor img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 10px 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 920px) {
+      .app {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+
+      .calendar-panel {
+        height: 48vh;
+      }
+
+      .journal-panel {
+        height: auto;
+        min-height: auto;
+        overflow: visible;
+        padding: 16px;
+      }
+
+      .journal-head {
+        grid-template-columns: 1fr;
+      }
+
+      .month h2 {
+        font-size: 18px;
+      }
+
+      .weekdays {
+        font-size: 11px;
+      }
+
+      .record-cell {
+        height: 520px;
+      }
+
+      .editor {
+        min-height: 520px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .month-controls {
+        flex-wrap: wrap;
+      }
+
+      .month-controls input {
+        flex-basis: 100%;
+      }
+
+      .topbar,
+      .weekdays {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .months {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .month h2 {
+        font-size: 27px;
+      }
+
+      .day {
+        font-size: 18px;
+      }
+
+      .journal-date {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="calendar-panel" aria-label="日历">
+      <div class="topbar">
+        <div class="title-row">
+          <h1>组会与科研进度 Journal</h1>
+          <div class="current-date" id="todayLabel"></div>
+        </div>
+        <div class="tool-row">
+          <div class="month-controls">
+            <button class="btn" id="prevMonth" type="button" aria-label="上个月">‹</button>
+            <input id="datePicker" type="date" aria-label="选择日期">
+            <button class="btn" id="nextMonth" type="button" aria-label="下个月">›</button>
+            <button class="btn ghost" id="todayButton" type="button">今天</button>
+          </div>
+        </div>
+      </div>
+      <div class="weekdays" aria-hidden="true">
+        <span>周日</span>
+        <span>周一</span>
+        <span>周二</span>
+        <span>周三</span>
+        <span>周四</span>
+        <span>周五</span>
+        <span>周六</span>
+      </div>
+      <div class="months" id="months"></div>
+    </section>
+
+    <section class="journal-panel" aria-label="日期记录">
+      <header class="journal-head">
+        <div>
+          <h2 class="journal-date" id="selectedDateTitle"></h2>
+          <div class="saved-state" id="savedState">记录会自动保存在此浏览器中</div>
+        </div>
+        <label class="meeting-switch">
+          <input id="meetingToggle" type="checkbox">
+          <span>组会日</span>
+        </label>
+      </header>
+
+      <div class="record-table-wrap">
+        <table class="record-table">
+          <colgroup>
+            <col>
+            <col>
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="diagonal" aria-label="斜线表头"></th>
+              <th>高晨峻</th>
+              <th>王若辰</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="row-label">记录</td>
+              <td class="record-cell">
+                <label class="sr-only" for="gaoNote">高晨峻记录</label>
+                <div class="editor" id="gaoNote" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="记录今天的科研进度、讨论要点、下一步任务，也可以直接粘贴图片..."></div>
+              </td>
+              <td class="record-cell">
+                <label class="sr-only" for="wangNote">王若辰记录</label>
+                <div class="editor" id="wangNote" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="记录今天的科研进度、讨论要点、下一步任务，也可以直接粘贴图片..."></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const storageKey = "researchJournal.v1";
+    const monthsEl = document.querySelector("#months");
+    const datePicker = document.querySelector("#datePicker");
+    const todayLabel = document.querySelector("#todayLabel");
+    const selectedDateTitle = document.querySelector("#selectedDateTitle");
+    const savedState = document.querySelector("#savedState");
+    const meetingToggle = document.querySelector("#meetingToggle");
+    const gaoNote = document.querySelector("#gaoNote");
+    const wangNote = document.querySelector("#wangNote");
+
+    const today = new Date();
+    const calendarStartYear = 2026;
+    const calendarEndYear = 2030;
+    const calendarMinDate = `${calendarStartYear}-01-01`;
+    const calendarMaxDate = `${calendarEndYear}-12-31`;
+    let selectedDate = clampDateKey(toDateKey(today));
+    let journal = loadJournal();
+    let saveTimer = null;
+    let pendingScrollToSelected = true;
+
+    todayLabel.textContent = `今天：${formatChineseDate(toDateKey(today))}`;
+
+    function loadJournal() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function persistJournal() {
+      localStorage.setItem(storageKey, JSON.stringify(journal));
+      savedState.textContent = `已保存：${new Date().toLocaleTimeString("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      })}`;
+    }
+
+    function addMonths(date, count) {
+      return new Date(date.getFullYear(), date.getMonth() + count, 1);
+    }
+
+    function toDateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseDateKey(key) {
+      const [year, month, day] = key.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function formatChineseDate(key) {
+      const date = parseDateKey(key);
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function hasEntry(key) {
+      const item = journal[key];
+      return Boolean(item && (noteHasContent(item.gao) || noteHasContent(item.wang)));
+    }
+
+    function isMeeting(key) {
+      return Boolean(journal[key] && journal[key].meeting);
+    }
+
+    function ensureDay(key) {
+      journal[key] = journal[key] || { meeting: false, gao: "", wang: "" };
+      return journal[key];
+    }
+
+    function renderCalendar() {
+      monthsEl.innerHTML = "";
+      datePicker.value = selectedDate;
+      datePicker.min = calendarMinDate;
+      datePicker.max = calendarMaxDate;
+
+      for (let year = calendarStartYear; year <= calendarEndYear; year += 1) {
+        for (let month = 0; month < 12; month += 1) {
+          monthsEl.appendChild(renderMonth(new Date(year, month, 1)));
+        }
+      }
+
+      if (pendingScrollToSelected) {
+        scrollSelectedMonthIntoView();
+        pendingScrollToSelected = false;
+      }
+    }
+
+    function renderMonth(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDay = new Date(year, month, 1).getDay();
+
+      const section = document.createElement("section");
+      section.className = "month";
+      section.id = `month-${year}-${String(month + 1).padStart(2, "0")}`;
+
+      const heading = document.createElement("h2");
+      heading.textContent = `${year}年${month + 1}月`;
+      section.appendChild(heading);
+
+      const grid = document.createElement("div");
+      grid.className = "day-grid";
+
+      for (let i = 0; i < firstDay; i += 1) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        grid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const key = toDateKey(new Date(year, month, day));
+        const button = document.createElement("button");
+        button.className = "day";
+        button.type = "button";
+        button.textContent = day;
+        button.setAttribute("aria-label", `${formatChineseDate(key)}${isMeeting(key) ? "，组会日" : ""}`);
+        button.dataset.date = key;
+
+        if (hasEntry(key)) button.classList.add("has-entry");
+        if (isMeeting(key)) button.classList.add("meeting");
+        if (key === selectedDate) button.classList.add("selected");
+
+        button.addEventListener("click", () => selectDate(key));
+        grid.appendChild(button);
+      }
+
+      section.appendChild(grid);
+      return section;
+    }
+
+    function selectDate(key) {
+      selectedDate = clampDateKey(key);
+      pendingScrollToSelected = true;
+      loadSelectedDay();
+      renderCalendar();
+    }
+
+    function loadSelectedDay() {
+      const item = ensureDay(selectedDate);
+      selectedDateTitle.textContent = formatChineseDate(selectedDate);
+      meetingToggle.checked = item.meeting;
+      setEditorContent(gaoNote, item.gao || "");
+      setEditorContent(wangNote, item.wang || "");
+      savedState.textContent = "记录会自动保存在此浏览器中";
+    }
+
+    function saveSelectedDay() {
+      const item = ensureDay(selectedDate);
+      item.meeting = meetingToggle.checked;
+      item.gao = getEditorContent(gaoNote);
+      item.wang = getEditorContent(wangNote);
+
+      if (!item.meeting && !noteHasContent(item.gao) && !noteHasContent(item.wang)) {
+        delete journal[selectedDate];
+      }
+
+      persistJournal();
+      updateSelectedDayButton();
+    }
+
+    function scheduleSave() {
+      savedState.textContent = "正在保存...";
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveSelectedDay, 180);
+    }
+
+    function updateSelectedDayButton() {
+      const button = document.querySelector(`.day[data-date="${selectedDate}"]`);
+      if (!button) return;
+      button.classList.toggle("has-entry", hasEntry(selectedDate));
+      button.classList.toggle("meeting", isMeeting(selectedDate));
+      button.setAttribute("aria-label", `${formatChineseDate(selectedDate)}${isMeeting(selectedDate) ? "，组会日" : ""}`);
+    }
+
+    function noteHasContent(value) {
+      if (!value) return false;
+      if (/<img\b/i.test(value)) return true;
+      const text = value
+        .replace(/<br\s*\/?>/gi, "")
+        .replace(/<\/div><div>/gi, "\n")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .trim();
+      return Boolean(text);
+    }
+
+    function setEditorContent(editor, content) {
+      if (/<\/?[a-z][\s\S]*>/i.test(content)) {
+        editor.innerHTML = content;
+      } else {
+        editor.textContent = content;
+      }
+    }
+
+    function getEditorContent(editor) {
+      return noteHasContent(editor.innerHTML) ? editor.innerHTML : "";
+    }
+
+    function handleEditorPaste(event) {
+      const editor = event.currentTarget;
+      const items = Array.from(event.clipboardData?.items || []);
+      const imageItems = items.filter((item) => item.type.startsWith("image/"));
+      if (!imageItems.length) return;
+
+      event.preventDefault();
+      imageItems.forEach((item) => {
+        const file = item.getAsFile();
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          insertHtmlAtCursor(`<img src="${reader.result}" alt="粘贴的图片">`, editor);
+          scheduleSave();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function insertHtmlAtCursor(html, editor) {
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount || !editor.contains(selection.anchorNode)) {
+        editor.insertAdjacentHTML("beforeend", html);
+        editor.focus();
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const template = document.createElement("template");
+      template.innerHTML = html;
+      const fragment = template.content;
+      const lastNode = fragment.lastChild;
+      range.insertNode(fragment);
+      if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+
+    document.querySelector("#prevMonth").addEventListener("click", () => {
+      selectDate(toDateKey(addMonths(parseDateKey(selectedDate), -1)));
+    });
+
+    document.querySelector("#nextMonth").addEventListener("click", () => {
+      selectDate(toDateKey(addMonths(parseDateKey(selectedDate), 1)));
+    });
+
+    document.querySelector("#todayButton").addEventListener("click", () => {
+      selectDate(toDateKey(today));
+    });
+
+    datePicker.addEventListener("change", () => {
+      if (datePicker.value) selectDate(datePicker.value);
+    });
+
+    meetingToggle.addEventListener("change", saveSelectedDay);
+    gaoNote.addEventListener("input", scheduleSave);
+    wangNote.addEventListener("input", scheduleSave);
+    gaoNote.addEventListener("paste", handleEditorPaste);
+    wangNote.addEventListener("paste", handleEditorPaste);
+
+    window.addEventListener("resize", () => {
+      clearTimeout(window.__calendarResizeTimer);
+      window.__calendarResizeTimer = setTimeout(() => {
+        pendingScrollToSelected = true;
+        renderCalendar();
+      }, 120);
+    });
+
+    loadSelectedDay();
+    renderCalendar();
+
+    function clampDateKey(key) {
+      if (key < calendarMinDate) return calendarMinDate;
+      if (key > calendarMaxDate) return calendarMaxDate;
+      return key;
+    }
+
+    function scrollSelectedMonthIntoView() {
+      const selected = parseDateKey(selectedDate);
+      const id = `month-${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, "0")}`;
+      const target = document.getElementById(id);
+      if (target) target.scrollIntoView({ block: "start" });
+    }
+  </script>
+</body>
+</html>

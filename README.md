@@ -1,5 +1,9 @@
 # 基于 LLM 的 UNCITRAL ISDS 改革谈判“隐形联盟”研究设计
 
+## 组会与科研进度 Journal
+
+网页入口：<https://chenjun88868.github.io/UNCITRAL-ISDS/>
+
 ## 一、研究目标
 
 ### 1.1 核心研究问题
